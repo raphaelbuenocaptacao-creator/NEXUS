@@ -90,4 +90,18 @@ if (!/function\s+normalizeSearch\s*\(/.test(html) || !/\.normalize\s*\(\s*['"]NF
   throw Error('Busca sem normalização de acentos');
 }
 
+// Regressão: histórico local, histórico remoto e importação devem compartilhar a mesma validação.
+const analyticsValidator = html.match(/function\\s+validAnalyticsRows\\s*\\(rows\\)\\s*\\{return ([^\\n]+)\\}/)?.[1];
+if (!analyticsValidator) throw Error('Validador analítico compartilhado ausente');
+for (const [feature, pattern] of [
+  ['armazenamento local', /if\\s*\\(validAnalyticsRows\\(saved\\)\\)/],
+  ['histórico remoto', /if\\s*\\(!validAnalyticsRows\\(rows\\)\\)/],
+  ['importação', /validAnalyticsRows\\(rows\\)/]
+]) {
+  if (!pattern.test(html)) throw Error(`Validação analítica ausente: ${feature}`);
+}
+if (!/r\\[2\\]\\.trim\\(\\)/.test(analyticsValidator) || !/Number\\.isFinite/.test(analyticsValidator)) {
+  throw Error('Validador analítico não verifica nomes vazios ou números não finitos');
+}
+
 console.log(`Validação estática OK: ${checked} script(s), elementos essenciais e ${historical.rows.length} linhas de histórico.`);
